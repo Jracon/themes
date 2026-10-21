@@ -1,0 +1,112 @@
+{
+  "moss": {
+    "dark": {
+      "bg": "#101911",
+      "blue": "#3fa3ff",
+      "border": "#38433a",
+      "bright": "#eff3f0",
+      "comment": "#6b746d",
+      "cyan": "#00b6af",
+      "fg": "#d1d6d1",
+      "green": "#30bd44",
+      "muted": "#a0a7a1",
+      "onAccent": "#101911",
+      "orange": "#ed7b00",
+      "pink": "#f45fb0",
+      "purple": "#a884ff",
+      "raised": "#202921",
+      "red": "#ff6266",
+      "selection": "#2c362d",
+      "surface": "#162018",
+      "yellow": "#b79e00"
+    },
+    "light": {
+      "bg": "#f7fbf8",
+      "blue": "#0074c8",
+      "border": "#ccd3cd",
+      "bright": "#0e130f",
+      "comment": "#808981",
+      "cyan": "#00837e",
+      "fg": "#242b25",
+      "green": "#008a23",
+      "muted": "#555d56",
+      "onAccent": "#f7fbf8",
+      "orange": "#ac5700",
+      "pink": "#b93780",
+      "purple": "#7c54cd",
+      "raised": "#e8ede8",
+      "red": "#c5353e",
+      "selection": "#dde3de",
+      "surface": "#f0f5f1",
+      "yellow": "#847100"
+    },
+    "signature": "green",
+    "meta": {
+      "description": "desktop: warm wood, green desk",
+      "neutralHue": 150,
+      "tint": 0.02,
+      "darkBgL": 0.2,
+      "accentL": {
+        "dark": 0.7,
+        "light": 0.55
+      },
+      "chroma": 0.2,
+      "rotation": 0
+    }
+  },
+  "violet": {
+    "dark": {
+      "bg": "#0f0f19",
+      "blue": "#3fa3ff",
+      "border": "#383843",
+      "bright": "#f1f1f5",
+      "comment": "#70707b",
+      "cyan": "#00b6af",
+      "fg": "#d3d4d9",
+      "green": "#30bd44",
+      "muted": "#a3a4ac",
+      "onAccent": "#0f0f19",
+      "orange": "#ed7b00",
+      "pink": "#f45fb0",
+      "purple": "#a884ff",
+      "raised": "#1f1f2a",
+      "red": "#ff6266",
+      "selection": "#2b2b36",
+      "surface": "#161620",
+      "yellow": "#b79e00"
+    },
+    "light": {
+      "bg": "#f9fafe",
+      "blue": "#0074c8",
+      "border": "#d0d0d9",
+      "bright": "#111117",
+      "comment": "#858590",
+      "cyan": "#00837e",
+      "fg": "#282830",
+      "green": "#008a23",
+      "muted": "#5a5a64",
+      "onAccent": "#f9fafe",
+      "orange": "#ac5700",
+      "pink": "#b93780",
+      "purple": "#7c54cd",
+      "raised": "#eaeaf0",
+      "red": "#c5353e",
+      "selection": "#e0e0e8",
+      "surface": "#f3f3f8",
+      "yellow": "#847100"
+    },
+    "signature": "purple",
+    "meta": {
+      "description": "everything else",
+      "neutralHue": 285,
+      "tint": 0.02,
+      "darkBgL": 0.175,
+      "accentL": {
+        "dark": 0.7,
+        "light": 0.55
+      },
+      "chroma": 0.2,
+      "rotation": 0
+    }
+  }
+}

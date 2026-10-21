@@ -1,0 +1,540 @@
+<title>Palette Workbench</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+  /* Layout: sticky control column beside a stack of live previews (swatches, editor, terminal, site). The page itself wears the palette being edited. */
+  :root {
+    --bg: #faf8ff; --surface: #f3f0fb; --raised: #ebe7f6; --selection: #ddd7ee; --border: #cfc8e3;
+    --comment: #857fa0; --muted: #5d5878; --fg: #2a2640; --bright: #17142a;
+    --red: #c2354a; --orange: #b25e12; --yellow: #8a6d00; --green: #2f7d3a;
+    --cyan: #137f7b; --blue: #2f62c4; --purple: #6c46c9; --pink: #b53a8a;
+    --accent: #6c46c9; --onAccent: #faf8ff;
+    --ui: "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14121b; --surface: #1b1826; --raised: #252133; --selection: #332e45; --border: #433d5a;
+      --comment: #7d7796; --muted: #a9a3c2; --fg: #d9d5ea; --bright: #f2f0fa;
+      --red: #ef6f7e; --orange: #f0a05f; --yellow: #e6cb6b; --green: #8fd18a;
+      --cyan: #5fd0c9; --blue: #6fa8f2; --purple: #b393f2; --pink: #ee82c4;
+      --accent: #b393f2; --onAccent: #14121b; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14121b; --surface: #1b1826; --raised: #252133; --selection: #332e45; --border: #433d5a;
+    --comment: #7d7796; --muted: #a9a3c2; --fg: #d9d5ea; --bright: #f2f0fa;
+    --red: #ef6f7e; --orange: #f0a05f; --yellow: #e6cb6b; --green: #8fd18a;
+    --cyan: #5fd0c9; --blue: #6fa8f2; --purple: #b393f2; --pink: #ee82c4;
+    --accent: #b393f2; --onAccent: #14121b; color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--fg); font: 15px/1.55 var(--ui); padding-inline: 16px; padding-block: 24px 64px; }
+  .wrap { max-width: 1280px; margin-inline: auto; display: grid; gap: 24px; }
+  h1, h2, h3, p { margin: 0; }
+  h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.01em; color: var(--bright); text-wrap: balance; }
+  h2 { font-size: 0.74rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  code, pre, .mono { font-family: var(--mono); }
+
+  header { display: flex; flex-wrap: wrap; gap: 16px 24px; align-items: flex-end; justify-content: space-between; }
+  header p { color: var(--muted); max-width: 52ch; margin-top: 4px; }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); }
+  .seg button { border: 0; background: transparent; padding: 6px 14px; color: var(--muted); }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: var(--onAccent); font-weight: 600; }
+
+  .app { display: grid; gap: 28px; grid-template-columns: minmax(0, 1fr); align-items: start; }
+  @media (min-width: 960px) { .app { grid-template-columns: 300px minmax(0, 1fr); } aside { position: sticky; top: 16px; } }
+  aside { display: grid; gap: 20px; }
+  .group { display: grid; gap: 12px; }
+  .presets { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { border: 1px solid var(--border); background: var(--surface); border-radius: 999px; padding: 3px 12px; font-size: 0.86rem; color: var(--fg); }
+  .chip:hover { border-color: var(--accent); }
+  .chip[aria-pressed="true"] { border-color: var(--accent); color: var(--bright); background: var(--raised); }
+  .ctl { display: grid; gap: 2px; }
+  .ctl label { display: flex; justify-content: space-between; font-size: 0.86rem; color: var(--muted); }
+  .ctl output { font-family: var(--mono); font-size: 0.8rem; color: var(--fg); }
+  input[type="range"] { width: 100%; accent-color: var(--accent); margin: 4px 0; }
+  .sigrow { display: flex; flex-wrap: wrap; gap: 8px; }
+  .sigrow button { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--bg); box-shadow: 0 0 0 1px var(--border); padding: 0; }
+  .sigrow button[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--bright); }
+
+  main { display: grid; gap: 36px; min-width: 0; }
+  section { display: grid; gap: 12px; min-width: 0; }
+  .note { color: var(--muted); font-size: 0.88rem; max-width: 70ch; }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; min-width: 0; }
+
+  /* swatches */
+  .row-label { font-size: 0.8rem; color: var(--muted); margin-bottom: 6px; }
+  .neutrals { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+  .accents { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 8px; }
+  .sw { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); text-align: left; padding: 0; display: block; width: 100%; }
+  .sw .blk { height: 44px; display: flex; align-items: flex-end; padding: 4px 8px; font-size: 0.72rem; font-weight: 600; }
+  .sw .meta { padding: 6px 8px; display: grid; gap: 0; font-size: 0.78rem; }
+  .sw .meta b { font-weight: 600; color: var(--bright); }
+  .sw .meta span { font-family: var(--mono); color: var(--muted); font-size: 0.72rem; }
+  .sw[aria-pressed="true"] { border-color: var(--bright); box-shadow: 0 0 0 1px var(--bright); }
+  .cr { display: flex; justify-content: space-between; }
+  .cr .ok { color: var(--green); }
+  .cr .low { color: var(--yellow); }
+
+  /* editor */
+  .tabs { display: flex; gap: 0; background: var(--bg); border-bottom: 1px solid var(--border); font-size: 0.8rem; overflow-x: auto; }
+  .tab { padding: 8px 16px; color: var(--comment); white-space: nowrap; border-bottom: 2px solid transparent; }
+  .tab.on { color: var(--bright); background: var(--surface); border-bottom-color: var(--accent); }
+  .code { font: 13px/1.7 var(--mono); padding-block: 10px; counter-reset: l; overflow-x: auto; background: var(--surface); }
+  .ln { counter-increment: l; white-space: pre; padding-right: 16px; min-width: max-content; display: block; }
+  .ln::before { content: counter(l); display: inline-block; width: 4ch; text-align: right; margin-right: 2ch; color: var(--comment); }
+  .ln.cur { background: var(--raised); }
+  .ln.cur::before { color: var(--accent); font-weight: 700; }
+  .ln[data-g="add"] { box-shadow: inset 3px 0 var(--green); }
+  .ln[data-g="mod"] { box-shadow: inset 3px 0 var(--orange); }
+  .k { color: var(--purple); } .s { color: var(--green); } .f { color: var(--blue); } .n { color: var(--orange); }
+  .o { color: var(--cyan); } .c { color: var(--comment); font-style: italic; } .t { color: var(--yellow); } .a { color: var(--bright); }
+  .i { color: var(--cyan); }
+  .sq-e { text-decoration: underline wavy var(--red); text-underline-offset: 3px; }
+  .sq-w { text-decoration: underline wavy var(--yellow); text-underline-offset: 3px; }
+  .vt-e { color: var(--red); opacity: 0.85; font-style: normal; }
+  .sel { background: var(--selection); }
+  .caret { background: var(--accent); color: var(--onAccent); }
+  .status { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: center; background: var(--bg); border-top: 1px solid var(--border); font: 12px/1 var(--mono); padding: 0 12px 0 0; color: var(--muted); }
+  .status .mode { background: var(--accent); color: var(--onAccent); font-weight: 700; padding: 7px 12px; }
+  .status .r { margin-left: auto; padding-block: 7px; }
+
+  /* terminal */
+  .term { background: var(--bg); font: 13px/1.6 var(--mono); padding: 14px 16px; overflow-x: auto; }
+  .term div { white-space: pre; min-width: max-content; }
+  .term .pr { color: var(--blue); } .term .br { color: var(--purple); } .term .gl { color: var(--accent); font-weight: 700; }
+  .term .dim { color: var(--comment); } .term .mu { color: var(--muted); }
+  .term .gr { color: var(--green); } .term .rd { color: var(--red); } .term .yl { color: var(--yellow); }
+  .term .cy { color: var(--cyan); } .term .bl { color: var(--blue); } .term .pu { color: var(--purple); }
+  .gap { height: 0.8em; min-height: 0; }
+  .ansi { display: grid; grid-template-columns: repeat(8, 1fr); gap: 0; margin-top: 8px; min-width: 320px; }
+  .ansi i { display: block; height: 22px; }
+  .tmux { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; background: var(--raised); font: 12px/1 var(--mono); color: var(--muted); }
+  .tmux .l { display: flex; }
+  .tmux .l span { padding: 8px 10px; }
+  .tmux .l .on { background: var(--accent); color: var(--onAccent); font-weight: 700; }
+  .tmux .r { padding: 8px 12px; }
+
+  /* website */
+  .site { background: var(--bg); padding: 20px clamp(16px, 4vw, 40px) 32px; display: grid; gap: 28px; }
+  .site nav { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px; align-items: baseline; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+  .site nav .mark { font-weight: 700; color: var(--accent); letter-spacing: -0.01em; }
+  .site nav ul { display: flex; gap: 20px; list-style: none; margin: 0; padding: 0; color: var(--muted); font-size: 0.92rem; }
+  .site h3 { font-size: clamp(1.6rem, 4vw, 2.3rem); line-height: 1.12; letter-spacing: -0.02em; color: var(--bright); text-wrap: balance; max-width: 18ch; }
+  .site .lede { color: var(--muted); max-width: 56ch; margin-top: 12px; }
+  .site .lede a, .site a.lnk { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+  .site .lede code { background: var(--raised); color: var(--pink); padding: 1px 6px; border-radius: 4px; font-size: 0.86em; }
+  .btns { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+  .btn { border: 1px solid var(--accent); background: var(--accent); color: var(--onAccent); font-weight: 600; padding: 8px 16px; border-radius: 6px; }
+  .btn.alt { background: transparent; color: var(--fg); border-color: var(--border); }
+  .tags { display: flex; flex-wrap: wrap; gap: 8px; }
+  .tag { font-size: 0.8rem; padding: 2px 10px; border-radius: 999px; border: 1px solid; font-weight: 500; }
+  .posts { display: grid; gap: 0; list-style: none; padding: 0; margin: 0; }
+  .posts li { display: grid; grid-template-columns: 7.5ch minmax(0, 1fr); gap: 16px; padding-block: 10px; border-top: 1px solid var(--border); }
+  .posts time { font: 12px/1.9 var(--mono); color: var(--comment); }
+  .posts b { color: var(--bright); font-weight: 600; display: block; }
+  .posts span { color: var(--muted); font-size: 0.9rem; }
+  .alerts { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
+  .alert { padding: 10px 12px; border-radius: 6px; font-size: 0.88rem; border: 1px solid; }
+  .alert b { display: block; font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; }
+
+  /* export */
+  .export { display: grid; gap: 10px; }
+  .export pre { margin: 0; padding: 14px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; font-size: 12.5px; line-height: 1.55; overflow: auto; max-height: 360px; color: var(--fg); }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .copy { border: 1px solid var(--accent); background: var(--accent); color: var(--onAccent); font-weight: 600; padding: 6px 14px; border-radius: 6px; }
+  #msg { color: var(--green); font-size: 0.86rem; min-height: 1.4em; }
+
+  @media (prefers-reduced-motion: no-preference) { .sw, .chip { transition: border-color 0.12s, box-shadow 0.12s; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Palette Workbench</h1>
+      <p>Move the sliders and the whole page, including these previews, re-colours. When it feels right, copy the Nix attrset at the bottom and it becomes the single source for every tool.</p>
+    </div>
+    <div class="seg" role="group" aria-label="Preview mode">
+      <button type="button" id="m-dark" aria-pressed="true">Dark</button>
+      <button type="button" id="m-light" aria-pressed="false">Light</button>
+    </div>
+  </header>
+
+  <div class="app">
+    <aside aria-label="Palette controls">
+      <div class="group">
+        <h2>Starting points</h2>
+        <div class="presets" id="presets"></div>
+      </div>
+      <div class="group">
+        <h2>Signature accent</h2>
+        <div class="sigrow" id="sig" role="group" aria-label="Signature accent"></div>
+        <p class="note">Used for the cursor, links, active tab, prompt glyph and buttons. Everything else stays quiet.</p>
+      </div>
+      <div class="group">
+        <h2>Neutrals</h2>
+        <div id="ctl-n" class="group"></div>
+      </div>
+      <div class="group">
+        <h2>Accents</h2>
+        <div id="ctl-a" class="group"></div>
+      </div>
+    </aside>
+
+    <main>
+      <section aria-labelledby="h-sw">
+        <h2 id="h-sw">Swatches</h2>
+        <div>
+          <div class="row-label">Neutrals, background to brightest text</div>
+          <div class="neutrals" id="neutrals"></div>
+        </div>
+        <div>
+          <div class="row-label">Accents, with contrast against the background (4.5 is the bar for body text). Click one to make it the signature.</div>
+          <div class="accents" id="accents"></div>
+        </div>
+      </section>
+
+      <section aria-labelledby="h-ed">
+        <h2 id="h-ed">Editor (neovim, VSCodium)</h2>
+        <div class="panel">
+          <div class="tabs"><span class="tab on">jellyfin.nix</span><span class="tab">flake.nix</span><span class="tab">fish.nix</span></div>
+          <div class="code" role="img" aria-label="Nix code sample with syntax colours, a git gutter, an error and a warning">
+<span class="ln"><span class="c"># media-servers: jellyfin</span></span>
+<span class="ln">{ <span class="a">config</span>, <span class="a sq-w">lib</span>, <span class="a">pkgs</span>, ... }:</span>
+<span class="ln"> </span>
+<span class="ln"><span class="k">let</span></span>
+<span class="ln">  port <span class="o">=</span> <span class="n">8096</span>;</span>
+<span class="ln"><span class="k">in</span> {</span>
+<span class="ln">  virtualisation.oci-containers.containers.jellyfin <span class="o">=</span> {</span>
+<span class="ln">    image <span class="o">=</span> <span class="s">"jellyfin/jellyfin:latest"</span>;</span>
+<span class="ln" data-g="mod">    pull <span class="o">=</span> <span class="s sq-e">"always"</span>;  <span class="vt-e">■ use "newer"</span></span>
+<span class="ln" data-g="add">    autoStart <span class="o">=</span> <span class="n">true</span>;</span>
+<span class="ln">    ports <span class="o">=</span> [ <span class="s">"</span><span class="i">${</span><span class="f">toString</span> port<span class="i">}</span><span class="s">:8096"</span> ];</span>
+<span class="ln">    extraOptions <span class="o">=</span> [ <span class="s">"--network=host"</span> ];</span>
+<span class="ln">  };</span>
+<span class="ln" data-g="add">  environment.systemPackages <span class="o">=</span> [ <span class="t">pkgs</span>.<span class="f">jellyfin-ffmpeg</span> ];</span>
+<span class="ln cur">  networking.firewall.allowedTCPPorts <span class="o">=</span> [ <span class="sel">por</span><span class="caret">t</span> ];</span>
+<span class="ln">}</span>
+          </div>
+          <div class="status"><span class="mode">VISUAL</span><span>jellyfin.nix</span><span>main</span><span><span style="color:var(--red)">● 1</span> <span style="color:var(--yellow)">▲ 1</span></span><span class="r">Ln 15, Col 42 · nix</span></div>
+        </div>
+      </section>
+
+      <section aria-labelledby="h-tm">
+        <h2 id="h-tm">Terminal (fish, starship, eza, delta, tmux)</h2>
+        <div class="panel">
+          <div class="term" role="img" aria-label="Terminal session with prompt, git diff, directory listing, build errors and the sixteen ANSI colours">
+<div><span class="pr">~/projects/genixis</span> <span class="br"> main</span> <span class="yl">●2</span> <span class="cy">⇡1</span></div>
+<div><span class="gl">❯</span> eza -l</div>
+<div><span class="mu">drwxr-xr-x</span>    <span class="dim">-</span> <span class="yl">jade</span> <span class="bl">21 Oct 09:14</span>  <span class="bl">common</span></div>
+<div><span class="yl">.r</span><span class="rd">w</span><span class="mu">-</span><span class="yl">r</span><span class="mu">--</span><span class="yl">r</span><span class="mu">--</span>  <span class="gr">4.2k</span> <span class="yl">jade</span> <span class="bl">20 Oct 18:02</span>  flake.nix</div>
+<div><span class="yl">.r</span><span class="rd">w</span><span class="mu">-</span><span class="yl">r</span><span class="mu">--</span><span class="yl">r</span><span class="mu">--</span>   <span class="gr">12k</span> <span class="yl">jade</span> <span class="bl">20 Oct 18:02</span>  <span class="dim">flake.lock</span></div>
+<div class="gap"></div>
+<div><span class="gl">❯</span> git diff common/palette.nix</div>
+<div><span class="cy">@@ -3,4 +3,4 @@</span> <span class="mu">in {</span></div>
+<div><span class="rd">-  purple = "#a78bfa";</span></div>
+<div><span class="gr">+  purple = "#b393f2";</span></div>
+<div class="gap"></div>
+<div><span class="gl">❯</span> nh os switch .</div>
+<div><span class="pu">&gt;</span> Building configuration…</div>
+<div><span class="yl">warning:</span> Git tree '/root/genixis' is dirty</div>
+<div><span class="rd">error:</span> attribute <span class="gr">'purpel'</span> missing</div>
+<div><span class="gl">❯</span> <span class="caret"> </span></div>
+<div class="ansi" id="ansi" aria-label="ANSI colours 0 to 15"></div>
+          </div>
+          <div class="tmux"><div class="l"><span class="on">[main]</span><span>1:fish</span><span>2:nvim*</span><span>3:btm</span></div><div class="r">genixis · 21 Oct 09:41</div></div>
+        </div>
+        <p class="note">Orange and pink have no ANSI slot, so they only appear in editors and on the web. Terminal black is the selection tone so it stays visible on the background.</p>
+      </section>
+
+      <section aria-labelledby="h-web">
+        <h2 id="h-web">Website</h2>
+        <div class="panel">
+          <div class="site">
+            <nav><span class="mark">jademeskill</span><ul><li>Notes</li><li>Projects</li><li>About</li></ul></nav>
+            <div>
+              <h3>Notes on declarative everything</h3>
+              <p class="lede">Self-hosting, Nix flakes and the occasional <code>podman</code> war story. Start with <a href="#h-web" onclick="return false">how this site's colours are generated</a>.</p>
+              <div class="btns"><button type="button" class="btn">Read the notes</button><button type="button" class="btn alt">View source</button></div>
+            </div>
+            <div class="tags" id="tags"></div>
+            <ul class="posts">
+              <li><time>2026-10-20</time><div><b>One palette, nine tools</b><span>Generating bat, starship and tmux themes from a single attrset.</span></div></li>
+              <li><time>2026-10-02</time><div><b>Why every container pulls "newer"</b><span>Notes from a year of Podman on NixOS.</span></div></li>
+              <li><time>2026-09-14</time><div><b>Moving from zsh to fish</b><span>What I kept, what I dropped, and the abbreviations that stuck.</span></div></li>
+            </ul>
+            <div class="alerts" id="alerts"></div>
+          </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="h-ex">
+        <h2 id="h-ex">Export</h2>
+        <div class="export">
+          <div class="actions">
+            <div class="seg" role="group" aria-label="Export format">
+              <button type="button" id="x-nix" aria-pressed="true">Nix</button>
+              <button type="button" id="x-css" aria-pressed="false">CSS</button>
+            </div>
+            <button type="button" class="copy" id="copy">Copy</button>
+            <span id="msg" role="status" aria-live="polite"></span>
+          </div>
+          <pre id="out" tabindex="0"></pre>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<script>
+(function () {
+  var HUES = { red: 22, orange: 55, yellow: 98, green: 145, cyan: 190, blue: 250, purple: 295, pink: 350 };
+  var ACC = Object.keys(HUES);
+  var NEU = ['bg', 'surface', 'raised', 'selection', 'border', 'comment', 'muted', 'fg', 'bright'];
+  var PRESETS = {
+    'Ink violet': { sig: 'purple', nHue: 285, nC: 0.022, bgL: 0.2, aL: 0.78, aC: 0.13, rot: 0, lAL: 0.5 },
+    'Deep sea':   { sig: 'cyan',   nHue: 240, nC: 0.02,  bgL: 0.21, aL: 0.78, aC: 0.12, rot: -8, lAL: 0.5 },
+    'Moss':       { sig: 'green',  nHue: 150, nC: 0.018, bgL: 0.2, aL: 0.78, aC: 0.12, rot: 0, lAL: 0.5 },
+    'Ember':      { sig: 'orange', nHue: 50,  nC: 0.02,  bgL: 0.21, aL: 0.8,  aC: 0.13, rot: 0, lAL: 0.52 },
+    'Graphite':   { sig: 'blue',   nHue: 260, nC: 0.006, bgL: 0.22, aL: 0.76, aC: 0.11, rot: 0, lAL: 0.5 }
+  };
+  var DEFAULT = 'Ink violet';
+  var SLIDERS = {
+    n: [
+      { k: 'nHue', label: 'Tint hue', min: 0, max: 360, step: 1, fmt: function (v) { return v + '°'; } },
+      { k: 'nC', label: 'Tint strength', min: 0, max: 0.05, step: 0.001, fmt: function (v) { return v.toFixed(3); } },
+      { k: 'bgL', label: 'Dark background depth', min: 0.12, max: 0.3, step: 0.005, fmt: function (v) { return v.toFixed(3); } }
+    ],
+    a: [
+      { k: 'aL', label: 'Lightness (dark)', min: 0.62, max: 0.9, step: 0.005, fmt: function (v) { return v.toFixed(3); } },
+      { k: 'lAL', label: 'Lightness (light)', min: 0.38, max: 0.62, step: 0.005, fmt: function (v) { return v.toFixed(3); } },
+      { k: 'aC', label: 'Colourfulness', min: 0.04, max: 0.2, step: 0.005, fmt: function (v) { return v.toFixed(3); } },
+      { k: 'rot', label: 'Hue rotation', min: -40, max: 40, step: 1, fmt: function (v) { return (v > 0 ? '+' : '') + v + '°'; } }
+    ]
+  };
+
+  var state = Object.assign({ mode: null, fmt: 'nix' }, PRESETS[DEFAULT]);
+  var rootEl = document.documentElement;
+  try {
+    var saved = JSON.parse(localStorage.getItem('palette-workbench') || 'null');
+    if (saved) Object.keys(saved).forEach(function (k) { if (k in state) state[k] = saved[k]; });
+  } catch (e) {}
+  if (!state.mode) {
+    var dt = rootEl.getAttribute('data-theme');
+    state.mode = dt === 'light' || dt === 'dark' ? dt : (window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+  }
+
+  /* ---- colour maths: OKLCH to sRGB hex, with chroma clamped into gamut ---- */
+  function lin(L, C, h) {
+    var hr = h * Math.PI / 180, a = C * Math.cos(hr), b = C * Math.sin(hr);
+    var l_ = L + 0.3963377774 * a + 0.2158037573 * b;
+    var m_ = L - 0.1055613458 * a - 0.0638541728 * b;
+    var s_ = L - 0.0894841775 * a - 1.2914855480 * b;
+    var l = l_ * l_ * l_, m = m_ * m_ * m_, s = s_ * s_ * s_;
+    return [
+      4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+      -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+      -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s
+    ];
+  }
+  function inGamut(v) { return v.every(function (x) { return x >= -0.0005 && x <= 1.0005; }); }
+  function hex(L, C, h) {
+    var v = lin(L, C, h);
+    if (!inGamut(v)) {
+      var lo = 0, hi = C;
+      for (var i = 0; i < 24; i++) { var mid = (lo + hi) / 2; if (inGamut(lin(L, mid, h))) lo = mid; else hi = mid; }
+      v = lin(L, lo, h);
+    }
+    return '#' + v.map(function (x) {
+      x = Math.min(1, Math.max(0, x));
+      x = x <= 0.0031308 ? 12.92 * x : 1.055 * Math.pow(x, 1 / 2.4) - 0.055;
+      return Math.round(x * 255).toString(16).padStart(2, '0');
+    }).join('');
+  }
+  function lum(h) {
+    var c = [1, 3, 5].map(function (i) {
+      var u = parseInt(h.substr(i, 2), 16) / 255;
+      return u <= 0.04045 ? u / 12.92 : Math.pow((u + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  }
+  function ratio(a, b) { var x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
+
+  function build(mode, s) {
+    var dark = mode === 'dark', p = {};
+    var Ls = dark
+      ? [s.bgL, s.bgL + 0.03, s.bgL + 0.07, s.bgL + 0.12, s.bgL + 0.17, 0.55, 0.72, 0.87, 0.96]
+      : [0.985, 0.965, 0.94, 0.91, 0.86, 0.62, 0.47, 0.28, 0.18];
+    var Cm = dark ? [1, 1, 1, 1, 1, 0.8, 0.6, 0.4, 0.25] : [0.3, 0.35, 0.4, 0.5, 0.6, 0.8, 0.8, 0.7, 0.6];
+    NEU.forEach(function (n, i) { p[n] = hex(Ls[i], s.nC * Cm[i], s.nHue); });
+    var L = dark ? s.aL : s.lAL, C = s.aC * (dark ? 1 : 0.9);
+    ACC.forEach(function (n) {
+      var h = (HUES[n] + s.rot + 360) % 360;
+      p[n] = hex(L, C, h);
+      p['b_' + n] = hex(dark ? L + 0.06 : L - 0.05, C * 0.95, h);
+    });
+    var acc = p[s.sig];
+    p.accent = acc;
+    p.onAccent = ratio(acc, p.bg) >= ratio(acc, p.bright) ? p.bg : p.bright;
+    return p;
+  }
+
+  /* ---- DOM helpers ---- */
+  function $(id) { return document.getElementById(id); }
+  function el(tag, cls, html) { var e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
+
+  /* controls */
+  function makeSliders(host, list) {
+    list.forEach(function (d) {
+      var wrap = el('div', 'ctl');
+      var lab = el('label'); lab.htmlFor = 's-' + d.k;
+      lab.appendChild(el('span', null, d.label));
+      var out = el('output'); out.id = 'o-' + d.k; lab.appendChild(out);
+      var inp = el('input'); inp.type = 'range'; inp.id = 's-' + d.k;
+      inp.min = d.min; inp.max = d.max; inp.step = d.step;
+      inp.addEventListener('input', function () { state[d.k] = parseFloat(inp.value); render(); });
+      wrap.appendChild(lab); wrap.appendChild(inp); host.appendChild(wrap);
+    });
+  }
+  makeSliders($('ctl-n'), SLIDERS.n);
+  makeSliders($('ctl-a'), SLIDERS.a);
+
+  var presetBtns = {};
+  Object.keys(PRESETS).forEach(function (name) {
+    var b = el('button', 'chip', name); b.type = 'button';
+    b.addEventListener('click', function () { Object.assign(state, PRESETS[name]); render(); });
+    presetBtns[name] = b; $('presets').appendChild(b);
+  });
+
+  var sigBtns = {};
+  ACC.forEach(function (n) {
+    var b = el('button'); b.type = 'button'; b.title = n; b.setAttribute('aria-label', n);
+    b.addEventListener('click', function () { state.sig = n; render(); });
+    sigBtns[n] = b; $('sig').appendChild(b);
+  });
+
+  $('m-dark').addEventListener('click', function () { state.mode = 'dark'; render(); });
+  $('m-light').addEventListener('click', function () { state.mode = 'light'; render(); });
+  $('x-nix').addEventListener('click', function () { state.fmt = 'nix'; render(); });
+  $('x-css').addEventListener('click', function () { state.fmt = 'css'; render(); });
+
+  /* ---- export text ---- */
+  function sortedKeys(p) {
+    var keys = NEU.concat(ACC, ['onAccent']);
+    return keys.sort(function (a, b) { var x = a.toLowerCase(), y = b.toLowerCase(); return x < y ? -1 : x > y ? 1 : 0; });
+  }
+  function exportNix(d, l) {
+    var out = '# neutral hue ' + state.nHue + ', tint ' + state.nC.toFixed(3) + ', dark bg L ' + state.bgL.toFixed(3) + '\n' +
+      '# accents: L ' + state.aL.toFixed(3) + ' dark / ' + state.lAL.toFixed(3) + ' light, C ' + state.aC.toFixed(3) + ', rotation ' + state.rot + '°\n{\n';
+    [['dark', d], ['light', l]].forEach(function (pair) {
+      out += '  ' + pair[0] + ' = {\n';
+      sortedKeys(pair[1]).forEach(function (k) { out += '    ' + k + ' = "' + pair[1][k] + '";\n'; });
+      out += '  };\n\n';
+    });
+    return out + '  signature = "' + state.sig + '";\n}\n';
+  }
+  function cssBlock(p, indent) {
+    return sortedKeys(p).map(function (k) { return indent + '--' + k.replace(/[A-Z]/g, function (m) { return '-' + m.toLowerCase(); }) + ': ' + p[k] + ';'; })
+      .concat([indent + '--accent: ' + p.accent + ';']).join('\n');
+  }
+  function exportCss(d, l) {
+    return ':root {\n' + cssBlock(l, '  ') + '\n}\n\n@media (prefers-color-scheme: dark) {\n  :root {\n' + cssBlock(d, '    ') + '\n  }\n}\n';
+  }
+
+  /* ---- render ---- */
+  var cache = {};
+  function render() {
+    var p = build(state.mode, state);
+    var d = build('dark', state), l = build('light', state);
+    cache = { d: d, l: l };
+
+    var st = rootEl.style;
+    NEU.concat(ACC, ['accent', 'onAccent']).forEach(function (k) { st.setProperty('--' + k.replace(/[A-Z]/g, function (m) { return '-' + m.toLowerCase(); }), p[k]); });
+    st.setProperty('--onAccent', p.onAccent);
+    st.setProperty('color-scheme', state.mode);
+
+    $('m-dark').setAttribute('aria-pressed', state.mode === 'dark');
+    $('m-light').setAttribute('aria-pressed', state.mode === 'light');
+    $('x-nix').setAttribute('aria-pressed', state.fmt === 'nix');
+    $('x-css').setAttribute('aria-pressed', state.fmt === 'css');
+
+    SLIDERS.n.concat(SLIDERS.a).forEach(function (s) {
+      $('s-' + s.k).value = state[s.k];
+      $('o-' + s.k).textContent = s.fmt(state[s.k]);
+    });
+    Object.keys(presetBtns).forEach(function (n) {
+      var pr = PRESETS[n], same = Object.keys(pr).every(function (k) { return pr[k] === state[k]; });
+      presetBtns[n].setAttribute('aria-pressed', same);
+    });
+    ACC.forEach(function (n) {
+      sigBtns[n].style.background = p[n];
+      sigBtns[n].setAttribute('aria-pressed', state.sig === n);
+    });
+
+    /* swatches */
+    var nh = $('neutrals'); nh.innerHTML = '';
+    NEU.forEach(function (n) {
+      var b = el('div', 'sw');
+      var txt = ratio(p[n], p.bright) > ratio(p[n], p.bg) ? p.bright : p.bg;
+      b.innerHTML = '<div class="blk" style="background:' + p[n] + ';color:' + txt + '">' + n + '</div><div class="meta"><span>' + p[n] + '</span></div>';
+      nh.appendChild(b);
+    });
+    var ah = $('accents'); ah.innerHTML = '';
+    ACC.forEach(function (n) {
+      var b = el('button', 'sw'); b.type = 'button'; b.setAttribute('aria-pressed', state.sig === n);
+      var r = ratio(p[n], p.bg), ok = r >= 4.5;
+      var txt = ratio(p[n], p.bright) > ratio(p[n], p.bg) ? p.bright : p.bg;
+      b.innerHTML = '<div class="blk" style="background:' + p[n] + ';color:' + txt + '">' + (state.sig === n ? 'signature' : '') + '</div>' +
+        '<div class="meta"><b>' + n + '</b><span>' + p[n] + '</span><span class="cr"><span>' + r.toFixed(1) + ':1</span><span class="' + (ok ? 'ok' : 'low') + '">' + (ok ? 'AA' : 'low') + '</span></span></div>';
+      b.addEventListener('click', function () { state.sig = n; render(); });
+      ah.appendChild(b);
+    });
+
+    /* ansi strip: 0 black..7 white, 8..15 bright */
+    var order = ['red', 'green', 'yellow', 'blue', 'purple', 'cyan'];
+    var ansi = [p.selection].concat(order.map(function (n) { return p[n]; }), [p.muted, p.comment],
+      order.map(function (n) { return p['b_' + n]; }), [p.bright]);
+    var strip = $('ansi'); strip.innerHTML = '';
+    ansi.slice(0, 16).forEach(function (c) { var i = el('i'); i.style.background = c; strip.appendChild(i); });
+
+    /* tags + alerts */
+    var tags = $('tags'); tags.innerHTML = '';
+    [['nix', 'purple'], ['podman', 'blue'], ['fish', 'green'], ['neovim', 'cyan'], ['tailscale', 'pink'], ['zfs', 'orange']].forEach(function (t) {
+      var s = el('span', 'tag', t[0]);
+      s.style.color = p[t[1]]; s.style.borderColor = 'color-mix(in srgb, ' + p[t[1]] + ' 40%, transparent)';
+      s.style.background = 'color-mix(in srgb, ' + p[t[1]] + ' 12%, transparent)';
+      tags.appendChild(s);
+    });
+    var al = $('alerts'); al.innerHTML = '';
+    [['Note', 'blue', 'Builds run on the Forgejo runner.'], ['Done', 'green', 'Switched to generation 214.'],
+     ['Careful', 'yellow', 'Git tree is dirty.'], ['Failed', 'red', 'Attribute missing in palette.nix.']].forEach(function (a) {
+      var d2 = el('div', 'alert', '<b>' + a[0] + '</b>' + a[2]);
+      d2.style.color = p[a[1]]; d2.style.borderColor = 'color-mix(in srgb, ' + p[a[1]] + ' 40%, transparent)';
+      d2.style.background = 'color-mix(in srgb, ' + p[a[1]] + ' 10%, transparent)';
+      al.appendChild(d2);
+    });
+
+    $('out').textContent = state.fmt === 'nix' ? exportNix(d, l) : exportCss(d, l);
+    try { localStorage.setItem('palette-workbench', JSON.stringify(state)); } catch (e) {}
+  }
+
+  $('copy').addEventListener('click', function () {
+    var text = $('out').textContent, msg = $('msg');
+    function done(ok) { msg.textContent = ok ? 'Copied.' : 'Select the text above and copy it.'; setTimeout(function () { msg.textContent = ''; }, 2500); }
+    function fallback() {
+      var r = document.createRange(); r.selectNodeContents($('out'));
+      var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r); done(false);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function () { done(true); }, fallback);
+    else fallback();
+  });
+
+  render();
+})();
+</script>
